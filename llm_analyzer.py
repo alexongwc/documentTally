@@ -1,84 +1,56 @@
 """
-LLM Analysis Module
-Handles all LLM-based analysis for compliance checking
+LLM Analyzer Module for Document Tally Compliance Analysis
 """
 
 import streamlit as st
 import json
 import requests
-from typing import Dict, List, Any
 from openai import OpenAI
-import httpx
 
 
 class LLMAnalyzer:
-    def __init__(self, vllm_api_base: str, vllm_model: str):
-        self.vllm_api_base = vllm_api_base
-        self.vllm_model = vllm_model
+    """LLM Analyzer for compliance document analysis"""
     
-    def test_connection(self):
+    def __init__(self, api_base: str, model: str):
+        self.api_base = api_base
+        self.model = model
+        
+    def test_connection(self) -> bool:
         """Test connection to vLLM server"""
         try:
-            response = requests.get(f"{self.vllm_api_base}/models", timeout=5)
+            response = requests.get(f"{self.api_base}/models", timeout=5)
             return response.status_code == 200
-        except Exception as e:
-            print(f"Connection test failed: {e}")
+        except:
             return False
     
-    def call_vllm_api(self, messages: List[Dict[str, str]], max_tokens: int = 2000, temperature: float = 0.1) -> str:
-        """Call vLLM API with messages"""
-        try:
-            payload = {
-                "model": self.vllm_model,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "stream": False
-            }
-            
-            response = requests.post(
-                f"{self.vllm_api_base}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "bypass-tunnel-reminder": "true",
-                    "User-Agent": "StreamlitApp/1.0"
-                },
-                json=payload,
-                timeout=60
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                return result["choices"][0]["message"]["content"]
-            else:
-                st.error(f"vLLM API error: {response.status_code} - {response.text}")
-                return ""
-        except Exception as e:
-            st.error(f"Error calling vLLM: {str(e)}")
-            return ""
-    
-    def analyze_transcript_vs_factfind(self, item_id, question, full_transcript, factfind_evidence, factfind_values):
+    def analyze_transcript_vs_factfind(self, item_id: str, question: str, 
+                                     full_transcript: str, factfind_evidence: str, 
+                                     factfind_values: str) -> dict:
         """Use LLM to directly analyze transcript content against factfind documentation"""
         
         # Check transcript size and chunk if necessary
         estimated_tokens = len(full_transcript) // 4
         
         if estimated_tokens >= 12000:
-            return self._analyze_chunked_transcript(item_id, question, full_transcript, factfind_evidence, factfind_values)
+            return self._analyze_chunked_transcript(item_id, question, full_transcript, 
+                                                  factfind_evidence, factfind_values)
         else:
-            return self._analyze_single_transcript(item_id, question, full_transcript, factfind_evidence, factfind_values)
+            return self._analyze_single_transcript(item_id, question, full_transcript, 
+                                                 factfind_evidence, factfind_values)
     
-    def _analyze_single_transcript(self, item_id, question, transcript_content, factfind_evidence, factfind_values):
+    def _analyze_single_transcript(self, item_id: str, question: str, transcript_content: str, 
+                                 factfind_evidence: str, factfind_values: str) -> dict:
         """Analyze a single transcript chunk against factfind documentation"""
         try:
             # Use custom headers for tunnel bypass if needed
+            import httpx
             httpx_client = httpx.Client(
                 headers={
                     "bypass-tunnel-reminder": "true",
                     "User-Agent": "StreamlitApp/1.0"
                 }
             )
-            client = OpenAI(base_url=self.vllm_api_base, api_key="dummy-key", http_client=httpx_client)
+            client = OpenAI(base_url=self.api_base, api_key="dummy-key", http_client=httpx_client)
             
             # Prepare factfind information
             factfind_info = "No documentation found"
@@ -159,7 +131,7 @@ CRITICAL RULE: Only assign Code 3 when there is genuine contradiction in meaning
 }}"""
 
             response = client.chat.completions.create(
-                model=self.vllm_model,
+                model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -183,34 +155,13 @@ CRITICAL RULE: Only assign Code 3 when there is genuine contradiction in meaning
                     potential_json = result_text[json_start : json_end + 1]
                     return json.loads(potential_json)
                 else:
-                    return {
-                        "transcript_mentioned": False,
-                        "factfind_documented": False,
-                        "transcript_excerpts": [],
-                        "timestamps": [],
-                        "values_align": None,
-                        "compliance_code": "Code 2",
-                        "confidence_score": 0.0,
-                        "analysis_reasoning": "JSON parsing failed",
-                        "value_comparison": "Unable to parse LLM response",
-                        "search_summary": "Analysis failed due to parsing error"
-                    }
+                    return self._create_error_result("JSON parsing failed")
                     
         except Exception as e:
-            return {
-                "transcript_mentioned": False,
-                "factfind_documented": False,
-                "transcript_excerpts": [],
-                "timestamps": [],
-                "values_align": None,
-                "compliance_code": "Code 2",
-                "confidence_score": 0.0,
-                "analysis_reasoning": f"Error during LLM analysis: {str(e)}",
-                "value_comparison": "Analysis failed due to error",
-                "search_summary": "Analysis failed due to technical error"
-            }
+            return self._create_error_result(f"Error during LLM analysis: {str(e)}")
     
-    def _analyze_chunked_transcript(self, item_id, question, full_transcript, factfind_evidence, factfind_values):
+    def _analyze_chunked_transcript(self, item_id: str, question: str, full_transcript: str, 
+                                   factfind_evidence: str, factfind_values: str) -> dict:
         """Handle chunked transcript analysis for large transcripts"""
         try:
             lines = full_transcript.split('\n')
@@ -225,7 +176,7 @@ CRITICAL RULE: Only assign Code 3 when there is genuine contradiction in meaning
                     current_chunk = line + '\n'
             chunks.append(current_chunk)
             
-            st.info(f"Large transcript detected for {item_id}. Processing in {len(chunks)} chunks...")
+            st.info(f"📄 Large transcript detected for {item_id}. Processing in {len(chunks)} chunks...")
             
             # Process each chunk and collect all results
             chunk_results = []
@@ -234,14 +185,15 @@ CRITICAL RULE: Only assign Code 3 when there is genuine contradiction in meaning
             for i, chunk in enumerate(chunks):
                 st.write(f"Processing chunk {i+1}/{len(chunks)} for {item_id}...")
                 
-                result = self._analyze_single_transcript(item_id, question, chunk, factfind_evidence, factfind_values)
+                result = self._analyze_single_transcript(item_id, question, chunk, 
+                                                       factfind_evidence, factfind_values)
                 chunk_results.append(result)
                 
                 # Check if evidence was found in this chunk
                 if result.get('transcript_mentioned', False):
                     evidence_found = True
                     confidence = result.get('confidence_score', 0.0)
-                    st.success(f"Found evidence for {item_id} in chunk {i+1} (confidence: {confidence:.2f})")
+                    st.success(f"✅ Found evidence for {item_id} in chunk {i+1} (confidence: {confidence:.2f})")
             
             # Return the best result from all chunks
             if evidence_found:
@@ -266,15 +218,19 @@ CRITICAL RULE: Only assign Code 3 when there is genuine contradiction in meaning
             
         except Exception as e:
             st.error(f"Error in chunked analysis for {item_id}: {str(e)}")
-            return {
-                "transcript_mentioned": False,
-                "factfind_documented": False,
-                "transcript_excerpts": [],
-                "timestamps": [],
-                "values_align": None,
-                "compliance_code": "Code 2",
-                "confidence_score": 0.0,
-                "analysis_reasoning": f"Error during chunked analysis: {str(e)}",
-                "value_comparison": "Analysis failed due to error",
-                "search_summary": "Chunked analysis failed due to technical error"
-            }
+            return self._create_error_result(f"Error during chunked analysis: {str(e)}")
+    
+    def _create_error_result(self, error_msg: str) -> dict:
+        """Create standardized error result"""
+        return {
+            "transcript_mentioned": False,
+            "factfind_documented": False,
+            "transcript_excerpts": [],
+            "timestamps": [],
+            "values_align": None,
+            "compliance_code": "Code 2",
+            "confidence_score": 0.0,
+            "analysis_reasoning": error_msg,
+            "value_comparison": "Analysis failed due to error",
+            "search_summary": "Analysis failed due to technical error"
+        }
