@@ -14,8 +14,15 @@ from typing import Dict, Any
 
 def save_extraction_results(extracted_data: Dict[str, Any], raw_text: str, temp_dir: str = None):
     """Save extraction results to temp directory"""
+    import tempfile
+    
     if temp_dir is None:
-        temp_dir = "/home/work/IntageAudit/Documenttally/tmp"
+        # Use system temp directory or create local tmp folder
+        try:
+            temp_dir = tempfile.mkdtemp(prefix="documenttally_")
+        except:
+            # Fallback to current directory tmp folder
+            temp_dir = os.path.join(os.getcwd(), "tmp")
     
     os.makedirs(temp_dir, exist_ok=True)
     
@@ -183,8 +190,12 @@ def display_tally_results(tally_df: pd.DataFrame, transcript_filename: str, fact
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Ensure tmp directory exists
-    tmp_dir = "/home/work/IntageAudit/Documenttally/tmp"
-    os.makedirs(tmp_dir, exist_ok=True)
+    import tempfile
+    try:
+        tmp_dir = tempfile.mkdtemp(prefix="documenttally_results_")
+    except:
+        tmp_dir = os.path.join(os.getcwd(), "tmp")
+        os.makedirs(tmp_dir, exist_ok=True)
     
     # Define file paths
     excel_filepath = os.path.join(tmp_dir, f"document_tally_{timestamp}.xlsx")
