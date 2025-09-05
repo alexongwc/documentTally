@@ -2,7 +2,7 @@
 
 A modular compliance analysis system for insurance documentation using AI-powered document processing.
 
-## 🎯 Features
+##  Features
 
 - **Fact-Find Extraction**: Extract structured data from PDF/DOC/DOCX insurance documents
 - **Compliance Analysis**: Compare transcripts vs fact-find documentation
@@ -10,7 +10,7 @@ A modular compliance analysis system for insurance documentation using AI-powere
 - **Modular Design**: Clean, maintainable code structure
 - **Multiple Formats**: Supports PDF, Excel, Word documents
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Installation
 
@@ -32,7 +32,7 @@ VLLM_API_BASE=https://your-api-endpoint/v1
 VLLM_MODEL=your-model-path
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Documenttally/
@@ -46,7 +46,7 @@ Documenttally/
 └── README.md                 # This file
 ```
 
-## 🔧 Usage
+##  Usage
 
 1. **Upload Insurance Document**: PDF, DOC, or DOCX fact-find forms
 2. **Extract Data**: AI extracts structured information
@@ -54,7 +54,7 @@ Documenttally/
 4. **Generate Report**: Comprehensive compliance analysis
 5. **Download Results**: Excel and JSON outputs
 
-## 🌐 Deployment
+##  Deployment
 
 ### Streamlit Cloud
 
@@ -69,7 +69,7 @@ Documenttally/
 2. Use tunnel service (ngrok, LocalTunnel, etc.)
 3. Set tunnel URL in environment variables
 
-## 📋 Requirements
+##  Requirements
 
 - Python 3.8+
 - Streamlit
@@ -78,13 +78,13 @@ Documenttally/
 - unstructured (for document processing)
 - PyPDF2 or PyMuPDF
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
 
-## 📄 License
+##  License
 
 This project is for compliance analysis purposes.
